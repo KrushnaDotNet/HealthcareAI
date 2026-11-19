@@ -1,0 +1,39 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build output
+bin/
+obj/
+
+# Test results
+TestResults/
+*.trx
+
+# NuGet
+packages/
+*.nupkg
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local development secrets
+.env
+.env.*
+!.env.example
+
+# Azure / local secrets
+secrets.json
+secrets.*.json
+
+# User-specific files
+*.csproj.user
+
+# Temporary files
+*.tmp
+*.temp

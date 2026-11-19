@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="HealthcareAI/HealthcareAI.csproj" />
+  <Project Path="HealthcareMcpServer/HealthcareMcpServer.csproj" />
+  <Project Path="McpAgentDemo/McpAgentDemo.csproj" />
+  <Project Path="McpClientDemo/McpClientDemo.csproj" />
+</Solution>

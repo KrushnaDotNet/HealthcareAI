@@ -1,0 +1,11 @@
+HealthcareAI Appointment Policy
+
+Patients can book appointments with available doctors.
+
+Appointments should be cancelled at least 24 hours before the scheduled appointment.
+
+If an appointment is cancelled less than 24 hours before the scheduled time, the patient should contact the hospital support team.
+
+Patients should arrive 15 minutes before their scheduled appointment.
+
+Emergency cases should not use the normal appointment process. Patients should contact emergency medical services or visit an appropriate emergency department.
