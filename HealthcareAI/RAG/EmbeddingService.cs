@@ -82,7 +82,7 @@ namespace HealthcareAI.RAG
 
             /// Return the embedding vector as a float array. If the response is null, return an empty array.
             /// This vector will eventually be stored in our vector database.
-            
+
             return result?.Embedding
                    ?? Array.Empty<float>();
         }

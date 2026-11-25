@@ -86,6 +86,9 @@ namespace HealthcareAI.Services
 
         public async Task<string> AskAsync(string conversationId, string userId, string question)
         {
+            //// MCP Service is a local service that provides additional tools/functions for the Semantic Kernel to use.
+            //// Need to Run MCP Service locally before running this code. MCP Service is a local service that provides additional tools/functions for the Semantic Kernel to use.
+
             await InitializeMcpAsync();
 
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();

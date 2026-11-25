@@ -27,6 +27,8 @@ namespace HealthcareAI.Controllers
 
         private readonly VectorSimilarityService _vectorSimilarityService;
 
+        private readonly QdrantVectorSearch _qdrantVectorSearch;
+
         public class AskRequest
         {
             public string ConversationId { get; set; } = string.Empty;
@@ -38,7 +40,7 @@ namespace HealthcareAI.Controllers
 
         public HealthcareController(SemanticKernelService semanticKernelService, LongTermMemoryStore longTermMemoryStore,
             DocumentLoader documentLoader, TextChunker textChunker, EmbeddingService embeddingService, HealthcareDbContext dbContext,
-            VectorSimilarityService vectorSimilarityService)
+            VectorSimilarityService vectorSimilarityService, QdrantVectorSearch qdrantVectorSearch)
         {
             _semanticKernelService = semanticKernelService;
             _longTermMemoryStore = longTermMemoryStore;
@@ -47,6 +49,7 @@ namespace HealthcareAI.Controllers
             _embeddingService = embeddingService;
             _dbContext = dbContext;
             _vectorSimilarityService = vectorSimilarityService;
+            _qdrantVectorSearch = qdrantVectorSearch;
         }
 
         ////[HttpPost("memory")]
@@ -297,6 +300,124 @@ namespace HealthcareAI.Controllers
         /// </summary>
         /// <returns></returns>
 
+        ////[HttpPost("rag/answer")]
+        ////public async Task<IActionResult> GetRagAnswer([FromBody] RagRequest request)
+        ////{
+        ////    var question = request.Question;
+
+        ////    if (string.IsNullOrWhiteSpace(question))
+        ////        return BadRequest("Question is required.");
+
+        ////    if (string.IsNullOrWhiteSpace(request.ConversationId))
+        ////        return BadRequest("ConversationId is required.");
+
+
+        ////    // 1. Generate question embedding
+        ////    var questionEmbedding = await _embeddingService
+        ////        .GenerateEmbeddingAsync(question);
+
+        ////    // 2. Load stored chunks from SQL Server
+        ////    //// var chunks = await _dbContext.DocumentChunks.ToListAsync();
+
+
+
+        ////    // 3. Find relevant chunk
+
+        ////    ////var bestChunk = await _vectorSimilarityService
+        ////    ////    .FindMostSimilarChunkAsync(
+        ////    ////        questionEmbedding,
+        ////    ////        chunks);
+
+        ////    //// Top-K Retrieval
+
+        ////    //var topChunks = _vectorSimilarityService
+        ////    //                .FindTopKSimilarChunks(
+        ////    //                    questionEmbedding,
+        ////    //                    chunks,
+        ////    //                    topK: 3);
+
+        ////    //// <summary>
+        ////    //// Now we can use Qdrant for vector search instead of SQL Server.
+        ////    //// </summary>
+
+
+        ////    var retrievedChunks = await _qdrantVectorSearch.SearchAsync(questionEmbedding, topK: 3);
+
+        ////    var context = string.Join("\n\n",retrievedChunks);
+
+        ////    if (retrievedChunks.Count == 0)
+        ////        return NotFound("No relevant information found.");
+
+        ////    //// Now we need to combine the Top-K chunks into one context for the LLM.
+
+
+        ////    //var context = string.Join(
+        ////    //                        "\n\n",
+        ////    //                        topChunks.Select(x => x.Chunk.ChunkText));
+
+        ////    ////if (bestChunk == null)
+        ////    ////    return NotFound("No relevant information found.");
+
+        ////    ////if (topChunks.Count == 0)
+        ////    ////    return NotFound("No relevant information found.");
+
+        ////    ////var bestChunk = topChunks[0].Chunk;
+
+        ////    var bestChunk = retrievedChunks[0].Chunk;
+
+        ////    // 4. Create prompt using question + retrieved context
+        ////    var prompt = $"""
+        ////                    Answer the question using only the provided context.
+
+        ////                    Context:
+        ////                    {bestChunk}
+
+        ////                    Question:
+        ////                    {question}
+
+        ////                    If the answer is not available in the context, say:
+        ////                    "I don't have enough information in the provided policy."
+        ////                    """;
+
+        ////    // 5. Send prompt to Semantic Kernel / LLM
+        ////    ////var answer = await _semanticKernelService.AskRagAsync(question, bestChunk.ChunkText);
+
+        ////    // Now we send the combined context to the LLM for answering.
+        ////    // var answer = await _semanticKernelService.AskRagAsync(question, context);
+
+        ////    // RAG with Chat History
+
+        ////    var answer = await _semanticKernelService.AskRagConversationAsync(
+        ////                                                            request.ConversationId,
+        ////                                                            question,
+        ////                                                            context);
+
+        ////    ////return Ok(new
+        ////    ////{
+        ////    ////    Question = question,
+        ////    ////    RelevantChunk = bestChunk.ChunkText,
+        ////    ////    Answer = answer
+        ////    ////});
+
+        ////    ////return Ok(new
+        ////    ////{
+        ////    ////    Question = question,
+        ////    ////    RetrievedChunks = topChunks.Select(x => new
+        ////    ////    {
+        ////    ////        x.Chunk.ChunkText,
+        ////    ////        x.Score
+        ////    ////    }),
+        ////    ////    Answer = answer
+        ////    ////});
+
+        ////    return Ok(new
+        ////    {
+        ////        Question = question,
+        ////        RetrievedChunks = retrievedChunks,
+        ////        Answer = answer
+        ////    });
+        ////}
+
         [HttpPost("rag/answer")]
         public async Task<IActionResult> GetRagAnswer([FromBody] RagRequest request)
         {
@@ -308,86 +429,31 @@ namespace HealthcareAI.Controllers
             if (string.IsNullOrWhiteSpace(request.ConversationId))
                 return BadRequest("ConversationId is required.");
 
+            var questionEmbedding =
+                await _embeddingService.GenerateEmbeddingAsync(question);
 
-            // 1. Generate question embedding
-            var questionEmbedding = await _embeddingService
-                .GenerateEmbeddingAsync(question);
+            var retrievedChunks =
+                await _qdrantVectorSearch.SearchAsync(
+                    questionEmbedding,
+                    topK: 3);
 
-            // 2. Load stored chunks
-            var chunks = await _dbContext.DocumentChunks
-                .ToListAsync();
-
-            // 3. Find relevant chunk
-
-            ////var bestChunk = await _vectorSimilarityService
-            ////    .FindMostSimilarChunkAsync(
-            ////        questionEmbedding,
-            ////        chunks);
-
-            //// Top-K Retrieval
-
-            var topChunks = _vectorSimilarityService
-                            .FindTopKSimilarChunks(
-                                questionEmbedding,
-                                chunks,
-                                topK: 3);
-
-            //// Now we need to combine the Top-K chunks into one context for the LLM.
-
-            var context = string.Join(
-                                    "\n\n",
-                                    topChunks.Select(x => x.Chunk.ChunkText));
-
-            ////if (bestChunk == null)
-            ////    return NotFound("No relevant information found.");
-
-            if (topChunks.Count == 0)
+            if (retrievedChunks.Count == 0)
                 return NotFound("No relevant information found.");
 
-            var bestChunk = topChunks[0].Chunk;
+            var context = string.Join(
+                "\n\n",
+                retrievedChunks);
 
-            // 4. Create prompt using question + retrieved context
-            var prompt = $"""
-                            Answer the question using only the provided context.
-
-                            Context:
-                            {bestChunk.ChunkText}
-
-                            Question:
-                            {question}
-
-                            If the answer is not available in the context, say:
-                            "I don't have enough information in the provided policy."
-                            """;
-
-            // 5. Send prompt to Semantic Kernel / LLM
-            ////var answer = await _semanticKernelService.AskRagAsync(question, bestChunk.ChunkText);
-
-            // Now we send the combined context to the LLM for answering.
-            // var answer = await _semanticKernelService.AskRagAsync(question, context);
-
-            // RAG with Chat History
-
-            var answer = await _semanticKernelService.AskRagConversationAsync(
-                                                                    request.ConversationId,
-                                                                    question,
-                                                                    context);
-
-            ////return Ok(new
-            ////{
-            ////    Question = question,
-            ////    RelevantChunk = bestChunk.ChunkText,
-            ////    Answer = answer
-            ////});
+            var answer =
+                await _semanticKernelService.AskRagConversationAsync(
+                    request.ConversationId,
+                    question,
+                    context);
 
             return Ok(new
             {
                 Question = question,
-                RetrievedChunks = topChunks.Select(x => new
-                {
-                    x.Chunk.ChunkText,
-                    x.Score
-                }),
+                RetrievedChunks = retrievedChunks,
                 Answer = answer
             });
         }
